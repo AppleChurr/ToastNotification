@@ -1,7 +1,7 @@
 ﻿
 namespace ToastNotification
 {
-    partial class Form1
+    partial class MainForm
     {
         /// <summary>
         /// 필수 디자이너 변수입니다.
@@ -35,11 +35,11 @@ namespace ToastNotification
             this.tbPath = new System.Windows.Forms.TextBox();
             this.pnlFilePath = new System.Windows.Forms.Panel();
             this.pnlMain = new System.Windows.Forms.Panel();
-            this.cbSheets = new System.Windows.Forms.ComboBox();
-            this.btnSave = new System.Windows.Forms.Button();
             this.lvData = new System.Windows.Forms.ListView();
             this.chDataName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.chType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.btnSave = new System.Windows.Forms.Button();
+            this.cbSheets = new System.Windows.Forms.ComboBox();
             this.pnlFilePath.SuspendLayout();
             this.pnlMain.SuspendLayout();
             this.SuspendLayout();
@@ -86,25 +86,6 @@ namespace ToastNotification
             this.pnlMain.Size = new System.Drawing.Size(832, 476);
             this.pnlMain.TabIndex = 3;
             // 
-            // cbSheets
-            // 
-            this.cbSheets.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbSheets.FormattingEnabled = true;
-            this.cbSheets.Location = new System.Drawing.Point(70, 62);
-            this.cbSheets.Name = "cbSheets";
-            this.cbSheets.Size = new System.Drawing.Size(240, 20);
-            this.cbSheets.TabIndex = 3;
-            this.cbSheets.SelectedIndexChanged += new System.EventHandler(this.cbSheets_SelectedIndexChanged);
-            // 
-            // btnSave
-            // 
-            this.btnSave.Location = new System.Drawing.Point(745, 441);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(75, 23);
-            this.btnSave.TabIndex = 4;
-            this.btnSave.Text = "저장";
-            this.btnSave.UseVisualStyleBackColor = true;
-            // 
             // lvData
             // 
             this.lvData.CheckBoxes = true;
@@ -129,14 +110,33 @@ namespace ToastNotification
             this.chType.Text = "항목 형식";
             this.chType.Width = 439;
             // 
-            // Form1
+            // btnSave
+            // 
+            this.btnSave.Location = new System.Drawing.Point(745, 441);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(75, 23);
+            this.btnSave.TabIndex = 4;
+            this.btnSave.Text = "저장";
+            this.btnSave.UseVisualStyleBackColor = true;
+            // 
+            // cbSheets
+            // 
+            this.cbSheets.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbSheets.FormattingEnabled = true;
+            this.cbSheets.Location = new System.Drawing.Point(70, 62);
+            this.cbSheets.Name = "cbSheets";
+            this.cbSheets.Size = new System.Drawing.Size(240, 20);
+            this.cbSheets.TabIndex = 3;
+            this.cbSheets.SelectedIndexChanged += new System.EventHandler(this.cbSheets_SelectedIndexChanged);
+            // 
+            // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(832, 476);
             this.Controls.Add(this.pnlMain);
-            this.Name = "Form1";
-            this.Text = "Form1";
+            this.Name = "MainForm";
+            this.Text = "ToastNotification";
             this.pnlFilePath.ResumeLayout(false);
             this.pnlFilePath.PerformLayout();
             this.pnlMain.ResumeLayout(false);

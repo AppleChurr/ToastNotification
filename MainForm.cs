@@ -11,11 +11,11 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ToastNotification
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         cNotifycation Notifycation = new cNotifycation() { Timeout = 1000 };
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
         }
