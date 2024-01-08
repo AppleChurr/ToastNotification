@@ -85,5 +85,49 @@ namespace sCommon.Database
             }
         }
 
+        public static string ReadDataPath()
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SQLiteCommand(connection))
+                {
+                    command.CommandText = $"SELECT Value FROM {TableNames[0]} WHERE Key = @Key";
+                    command.Parameters.AddWithValue("@Key", "DataPath");
+
+                    var result = command.ExecuteScalar();
+                    return result as string;
+                }
+            }
+        }
+
+        public static Tuple<string, string, string> ReadAlert(string sheetName)
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SQLiteCommand(connection))
+                {
+                    command.CommandText = $"SELECT CheckDate, DisplayData FROM {TableNames[1]} WHERE SheetName = @SheetName";
+                    command.Parameters.AddWithValue("@SheetName", sheetName);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string checkDate = reader["CheckDate"].ToString();
+                            string displayData = reader["DisplayData"].ToString();
+                            return new Tuple<string, string, string>(sheetName, checkDate, displayData);
+                        }
+                        else
+                        {
+                            return null; // Sheet not found
+                        }
+                    }
+                }
+            }
+        }
+
+
     }
 }

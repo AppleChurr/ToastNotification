@@ -1,4 +1,5 @@
-﻿using sCommon.Database;
+﻿using Microsoft.Office.Interop.Excel;
+using sCommon.Database;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -14,20 +15,34 @@ namespace ToastNotification
 {
     public partial class MainForm : Form
     {
-        cNotifycation Notifycation = new cNotifycation() { Timeout = 1000 };
 
         public MainForm()
         {
             InitializeComponent();
             cSystemDB.InitializeDatabase();
+
+
+            _filePath = cSystemDB.ReadDataPath();
+
+            if (_filePath != null)
+            {
+                Console.WriteLine($"Data Path: {_filePath}");
+                if (IsExcelFile(_filePath))
+                    SetFilePath(_filePath);
+                else
+                    MessageBox.Show("파일 경로가 변경되었거나 파일이 삭제되었습니다.");
+            }
+
+            MessageBox.Show("프로그램 대기");
         }
 
-        private void Notifycation_MessageClicked(object sender, EventArgs e)
+        protected override void OnVisibleChanged(EventArgs e)
         {
-            MessageBox.Show("Test");
+            if(this.Visible)
+                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+            base.OnVisibleChanged(e);
         }
-
-
 
         private string _filePath = "";
         private Excel.Application _excelApp;
@@ -35,18 +50,19 @@ namespace ToastNotification
         private List<KeyValuePair<string, List<KeyValuePair<int, string>>>> ExcelSheets = new List<KeyValuePair<string, List<KeyValuePair<int, string>>>>();
         private KeyValuePair<string, List<KeyValuePair<int, string>>> NowSheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>();
 
-        private string GetFilePath()
-        { return _filePath; }
-
+        Excel.Workbook nowWorkbook;
+        Excel.Worksheet nowWorksheet;
         private void SetFilePath(string value)
         {
             _filePath = value;
-            tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+            if(tbPath.IsHandleCreated)
+                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
 
             _excelApp = new Excel.Application();
-            Excel.Workbook workbook = _excelApp.Workbooks.Open(_filePath);
+            nowWorkbook = _excelApp.Workbooks.Open(_filePath);
 
-            foreach (Excel.Worksheet worksheet in workbook.Sheets.Cast<Excel.Worksheet>())
+            foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
             {
                 List<KeyValuePair<int, string>> lColum = new List<KeyValuePair<int, string>>();
 
@@ -63,7 +79,6 @@ namespace ToastNotification
                     {
                         Console.WriteLine("\t" + cellValue.ToString());
                         lColum.Add(new KeyValuePair<int, string>(ii, cellValue.ToString()));
-
                     }
                     else
                     {
@@ -78,7 +93,6 @@ namespace ToastNotification
 
             SetSheets();
         }
-
 
 
         private void btnPath_Click(object sender, EventArgs e)
@@ -119,18 +133,84 @@ namespace ToastNotification
             if(cbSheets.Items.Count > 0)
                 cbSheets.SelectedIndex = 0;
         }
-
         private void SetTable()
         {
             lvRefData.Items.Clear();
             lvIncludeData.Items.Clear();
 
+            List<int> refIndex = new List<int>();
+            List<int> notifyIndex = new List<int>();
+
+            Tuple<string, string, string> alert = cSystemDB.ReadAlert(NowSheet.Key);
+
+            if (alert != null)
+            {
+                string[] strRefIndex = alert.Item2.Split('|');
+                string[] strNotifyIndex = alert.Item3.Split('|');
+                
+                foreach (string numberString in strRefIndex)
+                {
+                    if (int.TryParse(numberString, out int number))
+                        refIndex.Add(number);
+                    else
+                        Console.WriteLine($"Failed to convert '{numberString}' to int.");
+                }
+
+                foreach (string numberString in strNotifyIndex)
+                {
+                    if (int.TryParse(numberString, out int number))
+                        notifyIndex.Add(number);
+                    else
+                        Console.WriteLine($"Failed to convert '{numberString}' to int.");
+                }
+            }
+
             foreach (var vv in NowSheet.Value)
             {
-                ListViewItem _item = new ListViewItem(new string[] { vv.Value, "" });
-
-                lvRefData.Items.Add(_item);
+                lvRefData.Items.Add(vv.Value);
                 lvIncludeData.Items.Add(vv.Value);
+            }
+
+            Console.WriteLine("알람 참조 데이터");
+
+            foreach (int ii in refIndex)
+            {
+                lvRefData.Items[ii].Checked = true;
+                Console.WriteLine("\t" + lvRefData.Items[ii].Text);
+            }
+
+            Console.WriteLine("공지 데이터");
+
+            foreach (int ii in notifyIndex)
+            {
+                lvIncludeData.Items[ii].Checked = true;
+                Console.WriteLine("\t" + lvIncludeData.Items[ii].Text);
+            }
+
+
+
+            nowWorksheet = (Worksheet)nowWorkbook.Sheets[NowSheet.Key];
+
+            int rowCount = nowWorksheet.UsedRange.Rows.Count;
+            int colCount = nowWorksheet.UsedRange.Columns.Count;
+
+            Console.WriteLine(nowWorksheet.Name + " >> " + rowCount + ", " + colCount);
+
+            for (int ii = 2; ii <= rowCount; ii++)
+            {
+                foreach (int jj in refIndex)
+                {
+                    object cellValue = (nowWorksheet.Cells[ii, jj + 1] as Excel.Range)?.Value2;
+
+                    if (cellValue != null)
+                    {
+                        string date = cellValue.ToString();
+                        if (date.Length > 8)
+                            date = "20" + date.Substring(date.Length - 7, 6);
+
+                        Console.WriteLine("\t" + date);
+                    }
+                }
             }
 
 
@@ -147,7 +227,6 @@ namespace ToastNotification
                 SetTable();
             }
         }
-
         private void btnSave_Click(object sender, EventArgs e)
         {
             /// 해당 파일 패스 DB에 저장
@@ -175,6 +254,9 @@ namespace ToastNotification
                     Data += data.ToString();
             }
             cSystemDB.SaveAlert(NowSheetName, Date, Data);
+
+
+            MessageBox.Show("저장이 완료되었습니다.");
 
         }
     }

@@ -51,6 +51,10 @@ namespace ToastNotification
             _notifyIcon.BalloonTipClosed += _notifyIcon_BalloonTipClosed;
         }
 
+        public bool Visible { get { return _notifyIcon.Visible; } set { _notifyIcon.Visible = value; } }
+
+        public ContextMenu ContextMenu { get { return _notifyIcon.ContextMenu;} set {  _notifyIcon.ContextMenu = value; } }
+
         private void _notifyIcon_BalloonTipClosed(object sender, EventArgs e)
         {
             _notifyIcon.Visible = false;

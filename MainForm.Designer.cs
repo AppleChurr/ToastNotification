@@ -14,8 +14,6 @@ namespace ToastNotification
         /// <param name="disposing">관리되는 리소스를 삭제해야 하면 true이고, 그렇지 않으면 false입니다.</param>
         protected override void Dispose(bool disposing)
         {
-            Notifycation.Dispose();
-
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -147,6 +145,7 @@ namespace ToastNotification
             this.chSelectItem});
             this.lvIncludeData.HideSelection = false;
             this.lvIncludeData.Location = new System.Drawing.Point(243, 92);
+            this.lvIncludeData.MultiSelect = false;
             this.lvIncludeData.Name = "lvIncludeData";
             this.lvIncludeData.Size = new System.Drawing.Size(218, 350);
             this.lvIncludeData.TabIndex = 5;
@@ -165,6 +164,7 @@ namespace ToastNotification
             this.chDataName});
             this.lvRefData.HideSelection = false;
             this.lvRefData.Location = new System.Drawing.Point(12, 92);
+            this.lvRefData.MultiSelect = false;
             this.lvRefData.Name = "lvRefData";
             this.lvRefData.Size = new System.Drawing.Size(218, 350);
             this.lvRefData.TabIndex = 5;
