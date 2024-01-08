@@ -7,162 +7,83 @@ using System.Data.SQLite;
 using System.IO;
 using System.ComponentModel;
 using System.Threading;
+using System.Windows.Forms;
+using Windows.UI.Xaml.Shapes;
 
 
 namespace sCommon.Database
 {
     public static class cSystemDB
     {
-
-        private static object disposeLock = new object();
-        private static bool disposeFlag = false;
-        public static bool isDispose
-        {
-            get { bool flag; lock (disposeLock) { flag = disposeFlag; } return flag; }
-            set { lock (disposeLock) { disposeFlag = value; } }
-        }
-
         private static string DBPath = "./Settings.db";
 
-        #region Static Enum
-
-        public static KeyValuePair<string, string> eDataPATH { get; } = new KeyValuePair<string, string>("DataPath", "Path");
-        public static KeyValuePair<string, string> eAlertSheet { get; } = new KeyValuePair<string, string>("SheetIndex", "Index");
-        public static KeyValuePair<string, string> eSTATE_BOARD_BAUD_RATE { get; } = new KeyValuePair<string, string>("StateBoard", "BaudRate");
-        public static KeyValuePair<string, string> eSTATE_BOARD_IP { get; } = new KeyValuePair<string, string>("StateBoard", "BoardIP");
-        public static KeyValuePair<string, string> eSTATE_BOARD_PORT { get; } = new KeyValuePair<string, string>("StateBoard", "BoardPort");
-        public static KeyValuePair<string, string> eSTATE_BOARD_AUTO_SET { get; } = new KeyValuePair<string, string>("StateBoard", "AutoSend");
-
-        #endregion
-
-        public static readonly string TRUE = "TRUE";
-        public static readonly string FALSE = "FALSE";
-
-
-
-
-        private static BackgroundWorker _worker = null;
-        private static void _worker_DoWork(object sender, DoWorkEventArgs e)
-        {
-            // 현재 작업 디렉토리 경로 가져오기
-            string currentDirectory = Directory.GetCurrentDirectory();
-
-            while (!isDispose)
-            {
-                //Console.WriteLine("cSystemDB_worker_DoWork");
-
-                if (messageQueue.Count <= 0)
-                {
-                    Thread.Sleep(100);
-                    continue;
-                }
-
-                KeyValuePair<KeyValuePair<string, string>, string>[] copyQueue = new KeyValuePair<KeyValuePair<string, string>, string>[messageQueue.Count];
-
-                lock (_lockQueue)
-                {
-                    copyQueue = (KeyValuePair<KeyValuePair<string, string>, string>[])(messageQueue.ToArray().Clone());
-                    messageQueue.Clear();
-                }
-                
-                InitializeDatabase();
-
-                using (SQLiteConnection connection = new SQLiteConnection(connectionString))
-                {
-                    connection.Open();
-
-                    foreach (KeyValuePair<KeyValuePair<string, string>, string> message in copyQueue)
-                    {
-                        using (SQLiteCommand command = new SQLiteCommand(connection))
-                        {
-                            command.CommandText = $"INSERT OR REPLACE INTO {message.Key.Key} (Key, Value) VALUES (@Key, @Value)";
-                            command.Parameters.AddWithValue("@Key", message.Key.Value);
-                            command.Parameters.AddWithValue("@Value", message.Value);
-                            command.ExecuteNonQuery();
-                        }
-                    }
-                }
-            }
-        }
-
-        private static List<KeyValuePair<KeyValuePair<string, string>, string>> messageQueue = new List<KeyValuePair<KeyValuePair<string, string>, string>>();
-        private static object _lockQueue = new object();
-
-
+        private static string currentDirectory = Directory.GetCurrentDirectory();
         private static string connectionString = $"Data Source={DBPath};Version=3;";
-        private static string[] TableNames = { "MainProgram", "StateBoard", "VideoWall", "Nova", "MediaPC" };
-
-        private static object _lockInit = new object();
-        private static void InitializeDatabase()
+        private static string[] TableNames = { "Config", "Notify" };
+        public static void InitializeDatabase()
         {
-            lock (_lockInit)
+            if (File.Exists(DBPath))
+                return;
+
+            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
             {
-                if (File.Exists(DBPath))
-                    return;
+                connection.Open();
 
-                using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+                foreach (string TName in TableNames)
                 {
-                    connection.Open();
+                    string createTableQuery = "";
 
-                    foreach (string TName in TableNames)
+                    switch (TName)
                     {
-                        string createTableQuery = $"CREATE TABLE {TName} (Key TEXT PRIMARY KEY, Value TEXT)";
+                        case "Config":
+                            createTableQuery = $"CREATE TABLE {TName} (Key TEXT PRIMARY KEY, Value TEXT)";
+                            break;
 
-                        using (SQLiteCommand command = new SQLiteCommand(createTableQuery, connection))
-                        {
-                            command.ExecuteNonQuery();
-                        }
+                        case "Notify":
+                            createTableQuery = $"CREATE TABLE {TName} (SheetName TEXT PRIMARY KEY, CheckDate TEXT, DisplayData TEXT)";
+                            break;
+                    }
+
+                    using (SQLiteCommand command = new SQLiteCommand(createTableQuery, connection))
+                    {
+                        command.ExecuteNonQuery();
                     }
                 }
             }
         }
 
-        public static void SaveSetting(KeyValuePair<string, string> TableKey, string value)
+        public static void SaveDataPath(string path)
         {
-            if (_worker == null)
-            {
-                _worker = new BackgroundWorker() { WorkerSupportsCancellation = true };
-                _worker.DoWork += _worker_DoWork;
-                _worker.RunWorkerAsync();
-            }
-
-            lock (_lockQueue)
-            {
-                messageQueue.Add(new KeyValuePair<KeyValuePair<string, string>, string>(TableKey, value));
-            }
-        }
-
-        public static string GetSetting(KeyValuePair<string, string> TableKey)
-        {
-            InitializeDatabase();
-
             using (var connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
                 using (var command = new SQLiteCommand(connection))
                 {
-                    try
-                    {
-                        command.CommandText = $"SELECT Value FROM {TableKey.Key} WHERE Key = @Key";
-                        command.Parameters.AddWithValue("@Key", TableKey.Value);
-
-                        var result = command.ExecuteScalar();
-                        return result?.ToString();
-                    }
-                    catch { return "faild"; }
+                    // 이미 키가 존재하는 경우 업데이트, 없는 경우 삽입
+                    command.CommandText = $"INSERT OR REPLACE INTO {TableNames[0]} (Key, Value) VALUES (@Key, @Value)";
+                    command.Parameters.AddWithValue("@Key", "DataPath");
+                    command.Parameters.AddWithValue("@Value", path);
+                    command.ExecuteNonQuery();
                 }
             }
-
         }
 
-
-        public static void Dispose()
+        public static void SaveAlert(string SteetName, string Date, string DispInfo)
         {
-            isDispose = true;
-
-            Thread.Sleep(1000);
-            _worker.CancelAsync();
-            _worker.Dispose();
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SQLiteCommand(connection))
+                {
+                    // 이미 키가 존재하는 경우 업데이트, 없는 경우 삽입
+                    command.CommandText = $"INSERT OR REPLACE INTO {TableNames[1]} (SheetName, CheckDate, DisplayData) VALUES (@SheetName, @CheckDate, @DisplayData)";
+                    command.Parameters.AddWithValue("@SheetName", SteetName);
+                    command.Parameters.AddWithValue("@CheckDate", Date);
+                    command.Parameters.AddWithValue("@DisplayData", DispInfo);
+                    command.ExecuteNonQuery();
+                }
+            }
         }
+
     }
 }

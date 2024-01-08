@@ -1,4 +1,5 @@
-﻿using System;
+﻿using sCommon.Database;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -18,6 +19,7 @@ namespace ToastNotification
         public MainForm()
         {
             InitializeComponent();
+            cSystemDB.InitializeDatabase();
         }
 
         private void Notifycation_MessageClicked(object sender, EventArgs e)
@@ -33,49 +35,48 @@ namespace ToastNotification
         private List<KeyValuePair<string, List<KeyValuePair<int, string>>>> ExcelSheets = new List<KeyValuePair<string, List<KeyValuePair<int, string>>>>();
         private KeyValuePair<string, List<KeyValuePair<int, string>>> NowSheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>();
 
-        private string FilePath { get { return _filePath; }
-            set
+        private string GetFilePath()
+        { return _filePath; }
+
+        private void SetFilePath(string value)
+        {
+            _filePath = value;
+            tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+            _excelApp = new Excel.Application();
+            Excel.Workbook workbook = _excelApp.Workbooks.Open(_filePath);
+
+            foreach (Excel.Worksheet worksheet in workbook.Sheets.Cast<Excel.Worksheet>())
             {
-                _filePath = value;
-                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
-                /// 해당 파일 패스 DB에 저장
-                /// 
-                _excelApp = new Excel.Application();
-                Excel.Workbook workbook = _excelApp.Workbooks.Open(_filePath);
+                List<KeyValuePair<int, string>> lColum = new List<KeyValuePair<int, string>>();
 
-                foreach (Excel.Worksheet worksheet in workbook.Sheets.Cast<Excel.Worksheet>())
+                int rowCount = worksheet.UsedRange.Rows.Count;
+                int colCount = worksheet.UsedRange.Columns.Count;
+
+                Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
+
+                for (int ii = 1; ii <= colCount; ii++)
                 {
-                    List<KeyValuePair<int, string>> lColum = new List<KeyValuePair<int, string>>();
+                    object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
 
-                    int rowCount = worksheet.UsedRange.Rows.Count;
-                    int colCount = worksheet.UsedRange.Columns.Count;
-
-                    Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
-
-                    for (int ii = 1; ii <= colCount; ii++)
+                    if (cellValue != null)
                     {
-                        object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
+                        Console.WriteLine("\t" + cellValue.ToString());
+                        lColum.Add(new KeyValuePair<int, string>(ii, cellValue.ToString()));
 
-                        if (cellValue != null)
-                        {
-                            Console.WriteLine("\t" + cellValue.ToString());
-                            lColum.Add(new KeyValuePair<int, string>(ii, cellValue.ToString()));
-
-                        }
-                        else
-                        {
-                            Console.WriteLine("\t" + "Empty or null cell");
-                        }
                     }
-
-                    KeyValuePair<string, List<KeyValuePair<int, string>>> sheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>(worksheet.Name, lColum);
-
-                    ExcelSheets.Add(sheet);
-
+                    else
+                    {
+                        Console.WriteLine("\t" + "Empty or null cell");
+                    }
                 }
 
-                SetSheets();
+                KeyValuePair<string, List<KeyValuePair<int, string>>> sheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>(worksheet.Name, lColum);
+
+                ExcelSheets.Add(sheet);
             }
+
+            SetSheets();
         }
 
 
@@ -93,7 +94,8 @@ namespace ToastNotification
                 // 선택된 파일이 .xlsx인지 확인
                 if (IsExcelFile(filePath))
                 {
-                    FilePath = filePath;
+                    SetFilePath(filePath);
+                    cSystemDB.SaveDataPath(filePath);
                 }
                 else
                 {
@@ -120,13 +122,15 @@ namespace ToastNotification
 
         private void SetTable()
         {
-            lvData.Items.Clear();
+            lvRefData.Items.Clear();
+            lvIncludeData.Items.Clear();
 
-            foreach(var vv in NowSheet.Value)
+            foreach (var vv in NowSheet.Value)
             {
                 ListViewItem _item = new ListViewItem(new string[] { vv.Value, "" });
 
-                lvData.Items.Add(_item);
+                lvRefData.Items.Add(_item);
+                lvIncludeData.Items.Add(vv.Value);
             }
 
 
@@ -142,7 +146,35 @@ namespace ToastNotification
 
                 SetTable();
             }
+        }
 
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            /// 해당 파일 패스 DB에 저장
+            /// 프로그램 실행 시 자동으로 읽어오도록
+            /// 파일 읽기
+            /// 다음 저장된 시트 번호 / 항목 명 / 날짜 형식 확인
+            /// 해당 파일을 읽고 해당 항목에 해당하는 
+
+            string NowSheetName = NowSheet.Key;
+            string Date = "";
+            string Data = "";
+            foreach(int date in lvRefData.CheckedIndices)
+            {
+                if (Date != "")
+                    Date += "|" + date.ToString();
+                else
+                    Date += date.ToString();
+            }
+
+            foreach (int data in lvIncludeData.CheckedIndices)
+            {
+                if(Data != "")
+                    Data += "|" + data.ToString();
+                else
+                    Data += data.ToString();
+            }
+            cSystemDB.SaveAlert(NowSheetName, Date, Data);
 
         }
     }
