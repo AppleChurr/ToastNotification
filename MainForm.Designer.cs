@@ -43,6 +43,7 @@ namespace ToastNotification
             this.chDataName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.btnSave = new System.Windows.Forms.Button();
             this.cbSheets = new System.Windows.Forms.ComboBox();
+            this.btnClose = new System.Windows.Forms.Button();
             this.pnlFilePath.SuspendLayout();
             this.pnlMain.SuspendLayout();
             this.SuspendLayout();
@@ -81,6 +82,7 @@ namespace ToastNotification
             // 
             // pnlMain
             // 
+            this.pnlMain.Controls.Add(this.btnClose);
             this.pnlMain.Controls.Add(this.Partition);
             this.pnlMain.Controls.Add(this.lbIncludeData);
             this.pnlMain.Controls.Add(this.lbRef);
@@ -179,7 +181,7 @@ namespace ToastNotification
             // btnSave
             // 
             this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSave.Location = new System.Drawing.Point(386, 448);
+            this.btnSave.Location = new System.Drawing.Point(12, 448);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(75, 23);
             this.btnSave.TabIndex = 4;
@@ -197,11 +199,22 @@ namespace ToastNotification
             this.cbSheets.TabIndex = 3;
             this.cbSheets.SelectedIndexChanged += new System.EventHandler(this.cbSheets_SelectedIndexChanged);
             // 
+            // btnClose
+            // 
+            this.btnClose.Location = new System.Drawing.Point(386, 448);
+            this.btnClose.Name = "btnClose";
+            this.btnClose.Size = new System.Drawing.Size(75, 23);
+            this.btnClose.TabIndex = 11;
+            this.btnClose.Text = "닫기";
+            this.btnClose.UseVisualStyleBackColor = true;
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(473, 477);
+            this.ControlBox = false;
             this.Controls.Add(this.pnlMain);
             this.MaximumSize = new System.Drawing.Size(489, 516);
             this.MinimumSize = new System.Drawing.Size(489, 516);
@@ -231,6 +244,7 @@ namespace ToastNotification
         private System.Windows.Forms.ListView lvNotifyData;
         private System.Windows.Forms.ColumnHeader chSelectItem;
         private System.Windows.Forms.Label Partition;
+        private System.Windows.Forms.Button btnClose;
     }
 }
 

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing;
 using Windows.UI.Notifications;
+using System.Threading;
 
 namespace ToastNotification
 {
@@ -14,30 +15,42 @@ namespace ToastNotification
 
         static MainForm MainForm;
 
+        static Mutex mutex = new Mutex(true, "ToastNotificationMutex");
+
         /// <summary>
         /// 해당 애플리케이션의 주 진입점입니다.
         /// </summary>
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
 
-            Notifycation.Visible = true;
+            if (mutex.WaitOne(TimeSpan.Zero, true))
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
 
-            MainForm = new MainForm();
-            MainForm.FormClosing += MainForm_FormClosing;
-            MainForm.ShowAlertMessage += MainForm_ShowAlertMessage;
+                Notifycation.Visible = true;
 
-            ContextMenu contextMenu = new ContextMenu();
-            contextMenu.MenuItems.Add("표시", (sender, e) => MainForm.Show());
-            contextMenu.MenuItems.Add("종료", (sender, e) => ExitApplication());
-            Notifycation.ContextMenu = contextMenu;
+                MainForm = new MainForm();
+                MainForm.FormClosing += MainForm_FormClosing;
+                MainForm.ShowAlertMessage += MainForm_ShowAlertMessage;
 
-            MainForm.Initialize();
+                ContextMenu contextMenu = new ContextMenu();
+                contextMenu.MenuItems.Add("표시", (sender, e) => MainForm.Show());
+                contextMenu.MenuItems.Add("종료", (sender, e) => ExitApplication());
+                Notifycation.ContextMenu = contextMenu;
 
+                MainForm.Initialize();
 
-            Application.Run();
+                Application.Run();
+
+                mutex.ReleaseMutex();
+            }
+            else
+            {
+                MessageBox.Show("프로그램이 이미 실행 중입니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ExitApplication();
+            }
         }
 
         private static void MainForm_ShowAlertMessage(object sender, EventArgs e)
@@ -55,16 +68,18 @@ namespace ToastNotification
             DialogResult result = MessageBox.Show(msg + "확인을 누르시면 클립보드로 복사됩니다.");
             if(result == DialogResult.OK)
                 Clipboard.SetText(msg);
+
+            Notifycation.MessageClicked -= Notifycation_MessageClicked;
         }
 
         private static void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            ExitApplication();
+
         }
 
         static void ExitApplication()
         {
-            MainForm.Dispose();
+            MainForm?.Dispose();
             Notifycation.Visible = false;
             Application.Exit();
         }

@@ -2,6 +2,7 @@
 using sCommon.Database;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -22,93 +23,109 @@ namespace ToastNotification
         public MainForm()
         {
             InitializeComponent();
-
-
-
         }
 
         public void Initialize()
         {
-            cSystemDB.InitializeDatabase();
-
-            _filePath = cSystemDB.ReadDataPath();
-
-            if (_filePath != null)
+            try
             {
+                cSystemDB.InitializeDatabase();
+
+                _filePath = cSystemDB.ReadDataPath();
+
+                if (_filePath != null)
+                {
 #if DEBUG
-                Console.WriteLine($"Data Path: {_filePath}");
+                    Console.WriteLine($"Data Path: {_filePath}");
 #endif
-                if (IsExcelFile(_filePath))
-                    SetFilePath(_filePath);
-                else
-                    MessageBox.Show("파일 경로가 변경되었거나 파일이 삭제되었습니다.");
+                    if (IsExcelFile(_filePath))
+                        SetFilePath(_filePath);
+                    else
+                        MessageBox.Show("파일 경로가 변경되었거나 파일이 삭제되었습니다.");
+                }
+
+                SetNotifyMessage();
             }
-
-            MessageBox.Show("프로그램 대기");
-
-            SetNotifyMessage();
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message); 
+            }
         }
 
         #region Button Event
         private void btnPath_Click(object sender, EventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Excel 파일 (*.xlsx)|*.xlsx|모든 파일 (*.*)|*.*";
-            openFileDialog.Title = "Excel 파일 선택";
-
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            try
             {
-                string filePath = openFileDialog.FileName;
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                openFileDialog.Filter = "Excel 파일 (*.xlsx)|*.xlsx|모든 파일 (*.*)|*.*";
+                openFileDialog.Title = "Excel 파일 선택";
 
-                // 선택된 파일이 .xlsx인지 확인
-                if (IsExcelFile(filePath))
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    SetFilePath(filePath);
-                    cSystemDB.SaveDataPath(filePath);
+                    string filePath = openFileDialog.FileName;
+
+                    // 선택된 파일이 .xlsx인지 확인
+                    if (IsExcelFile(filePath))
+                    {
+                        SetFilePath(filePath);
+                        cSystemDB.SaveDataPath(filePath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("올바른 Excel 파일을 선택해주세요.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
-                else
-                {
-                    MessageBox.Show("올바른 Excel 파일을 선택해주세요.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
             }
         }
         private void btnSave_Click(object sender, EventArgs e)
         {
-            string NowSheetName = NowSheet.Name;
-            string Date = "";
-            string Data = "";
-            foreach (int date in lvRefData.CheckedIndices)
+            try
             {
-                if (Date != "") Date += "|" + date.ToString();
-                else            Date += date.ToString();
-            }
-
-            foreach (int data in lvNotifyData.CheckedIndices)
-            {
-                if (Data != "") Data += "|" + data.ToString();
-                else            Data += data.ToString();
-            }
-
-
-            if (Date == "")
-            {
-                cSystemDB.RemoveAlert(NowSheetName);
-                MessageBox.Show("지정된 알람 기준 날짜가 없어 예약을 삭제합니다.", "알림", MessageBoxButtons.OK);
-            }
-            else
-            {
-                cSystemDB.SaveAlert(NowSheetName, Date, Data);
-                DialogResult result = MessageBox.Show("저장이 완료되었습니다.\r\n알람을 바로 적용하시겠습니까?", "알림", MessageBoxButtons.YesNo);
-
-                if (result == DialogResult.Yes)
+                string NowSheetName = NowSheet.Name;
+                string Date = "";
+                string Data = "";
+                foreach (int date in lvRefData.CheckedIndices)
                 {
-                    SetAlertDataTable();
-                    SetNotifyMessage();
-                    MessageBox.Show("적용되었습니다.", "알림", MessageBoxButtons.OK);
+                    if (Date != "") Date += "|" + date.ToString();
+                    else Date += date.ToString();
+                }
 
+                foreach (int data in lvNotifyData.CheckedIndices)
+                {
+                    if (Data != "") Data += "|" + data.ToString();
+                    else Data += data.ToString();
+                }
+
+
+                if (Date == "")
+                {
+                    cSystemDB.RemoveAlert(NowSheetName);
+                    MessageBox.Show("지정된 알람 기준 날짜가 없어 예약을 삭제합니다.", "알림", MessageBoxButtons.OK);
                 }
                 else
-                    MessageBox.Show("저장된 알람은 프로그램 재 실행 시 적용됩니다.", "알림", MessageBoxButtons.OK);
+                {
+                    cSystemDB.SaveAlert(NowSheetName, Date, Data);
+                    DialogResult result = MessageBox.Show("저장이 완료되었습니다.\r\n알람을 바로 적용하시겠습니까?", "알림", MessageBoxButtons.YesNo);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        SetAlertDataTable();
+                        SetNotifyMessage();
+                        MessageBox.Show("적용되었습니다.", "알림", MessageBoxButtons.OK);
+
+                    }
+                    else
+                        MessageBox.Show("저장된 알람은 프로그램 재 실행 시 적용됩니다.", "알림", MessageBoxButtons.OK);
+                }
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
             }
         }
         #endregion
@@ -116,12 +133,19 @@ namespace ToastNotification
         #region ComboBox Event
         private void cbSheets_SelectedIndexChanged(object sender, EventArgs e)
         {
-            ComboBox cb = (ComboBox)sender;
-
-            if (cb.SelectedIndex >= 0)
+            try
             {
-                NowSheet = ExcelSheets.Find(x => x.Name == (string)cb.SelectedItem);
-                SetTable();
+                ComboBox cb = (ComboBox)sender;
+
+                if (cb.SelectedIndex >= 0)
+                {
+                    NowSheet = ExcelSheets.Find(x => x.Name == (string)cb.SelectedItem);
+                    SetTable();
+                }
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
             }
         }
         #endregion
@@ -182,28 +206,41 @@ namespace ToastNotification
 
         private void SetSheets()
         {
-            cbSheets.Items.Clear();
+            try
+            {
+                cbSheets.Items.Clear();
 
-            foreach(var sheet in ExcelSheets)
-                cbSheets.Items.Add(sheet.Name);
+                foreach (var sheet in ExcelSheets)
+                    cbSheets.Items.Add(sheet.Name);
 
-            if(cbSheets.Items.Count > 0)
-                cbSheets.SelectedIndex = 0;
+                if (cbSheets.Items.Count > 0)
+                    cbSheets.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
+            }
         }
         private void SetTable()
         {
-            lvRefData.Items.Clear();
-            lvNotifyData.Items.Clear();
-
-            foreach (var sheet in NowSheet.lDataTitle)
+            try
             {
-                ListViewItem _ref = new ListViewItem(sheet.Title) { Checked = sheet.isAlert };
-                ListViewItem _noti = new ListViewItem(sheet.Title) { Checked = sheet.isNotify };
+                lvRefData.Items.Clear();
+                lvNotifyData.Items.Clear();
 
-                lvRefData.Items.Add(_ref);
-                lvNotifyData.Items.Add(_noti);
+                foreach (var sheet in NowSheet.lDataTitle)
+                {
+                    ListViewItem _ref = new ListViewItem(sheet.Title) { Checked = sheet.isAlert };
+                    ListViewItem _noti = new ListViewItem(sheet.Title) { Checked = sheet.isNotify };
+
+                    lvRefData.Items.Add(_ref);
+                    lvNotifyData.Items.Add(_noti);
+                }
             }
-
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message); 
+            }
         }
         private void SetAlertDataTable()
         {
@@ -251,7 +288,7 @@ namespace ToastNotification
                                     try
                                     {
                                         var cell = worksheet.Cell(ii, dt.Index);
-                                        if((cell.DataType == XLDataType.Text) && ((string)cell.CachedValue == ""))
+                                        if ((cell.DataType == XLDataType.Text) && ((string)cell.CachedValue == ""))
                                         {
                                             //dt.lData.Add(new DateTime());
                                             line.lAlert.Add(new DateTime());
@@ -277,7 +314,7 @@ namespace ToastNotification
 #endif
                                             }
                                         }
-                                       
+
                                     }
                                     catch (Exception ex)
                                     {
@@ -351,73 +388,87 @@ namespace ToastNotification
         }
         public void CheckList(Sheet sheet, string[] strArray, bool isAlert)
         {
-            foreach (string numberString in strArray)
+            try
             {
-                if (int.TryParse(numberString, out int number))
+                foreach (string numberString in strArray)
                 {
-                    DataTitle dt = sheet.lDataTitle.Find(x => x.Index == number + 1);
-
-                    if (isAlert)
+                    if (int.TryParse(numberString, out int number))
                     {
-                        dt.isAlert = true;
+                        DataTitle dt = sheet.lDataTitle.Find(x => x.Index == number + 1);
+
+                        if (isAlert)
+                        {
+                            dt.isAlert = true;
 #if DEBUG
-                        Console.WriteLine(dt.Title + " is Alert");
+                            Console.WriteLine(dt.Title + " is Alert");
 #endif
+                        }
+                        else
+                        {
+                            dt.isNotify = true;
+
+#if DEBUG
+                            Console.WriteLine(dt.Title + " is Notify");
+#endif
+                        }
                     }
+
                     else
                     {
-                        dt.isNotify = true;
-
 #if DEBUG
-                        Console.WriteLine(dt.Title + " is Notify");
+                        Console.WriteLine($"Failed to convert '{numberString}' to int.");
 #endif
                     }
                 }
-
-                else
-                {
-#if DEBUG
-                    Console.WriteLine($"Failed to convert '{numberString}' to int.");
-#endif
-                }
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
             }
         }
 
         private void SetNotifyMessage()
         {
-            string msg = "";
-
-            foreach (Sheet sheet in ExcelSheets)
+            try
             {
-                Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
+                string msg = "";
 
-                if (alert != null)
+                foreach (Sheet sheet in ExcelSheets)
                 {
-                    msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
-                    int CountAlert = 0;
+                    Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
 
-                    foreach (DataLine line in sheet.lLines)
+                    if (alert != null)
                     {
-                        if(line.lAlert.FindIndex(x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))) >= 0)
+                        msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
+                        int CountAlert = 0;
+
+                        foreach (DataLine line in sheet.lLines)
                         {
-                            foreach (string data in line.lData)
-                                msg += (data + ", ");
+                            if (line.lAlert.FindIndex(x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))) >= 0)
+                            {
+                                foreach (string data in line.lData)
+                                    msg += (data + ", ");
 
-                            msg += "\r\n";
+                                msg += "\r\n";
 
-                            CountAlert += 1;
+                                CountAlert += 1;
+                            }
                         }
+
+                        msg += sheet.Name + " 에서 총 " + CountAlert + " 개의 확인이 필요합니다. \r\n";
+
                     }
-
-                    msg += sheet.Name + " 에서 총 " + CountAlert + " 개의 확인이 필요합니다. \r\n";
-
                 }
-            }
 
-            ShowAlertMessage?.Invoke(msg, new EventArgs());
+                ShowAlertMessage?.Invoke(msg, new EventArgs());
+            }
+            catch (Exception ex)
+            { 
+                MessageBox.Show(ex.Message); 
+            }
         }
 
-#region override
+        #region override
         protected override void OnVisibleChanged(EventArgs e)
         {
             if (this.Visible)
@@ -425,7 +476,7 @@ namespace ToastNotification
 
             base.OnVisibleChanged(e);
         }
-#endregion
+        #endregion
 
         static DateTime ConvertFromExcelDate(double excelDate)
         {
@@ -434,6 +485,11 @@ namespace ToastNotification
             DateTime resultDate = baseDate.AddDays(excelDate - 2); // Excel의 날짜 기준으로 2일이 차이나므로 2를 빼줍니다.
 
             return resultDate;
+        }
+
+        private void btnClose_Click(object sender, EventArgs e)
+        {
+            this.Visible = false;
         }
     }
 
