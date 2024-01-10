@@ -135,45 +135,52 @@ namespace ToastNotification
         #region Setting
         private void SetFilePath(string value)
         {
-            _filePath = value;
-
-            if (tbPath.IsHandleCreated)
-                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
-
-            _excelApp = new Excel.Application();
-            nowWorkbook = _excelApp.Workbooks.Open(_filePath);
-
-            foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
+            try
             {
-                List<DataTitle> lColum = new List<DataTitle>();
+                _filePath = value;
 
-                int rowCount = worksheet.UsedRange.Rows.Count;
-                int colCount = worksheet.UsedRange.Columns.Count;
-#if DEBUG
-                Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
-#endif
-                for (int ii = 1; ii <= colCount; ii++)
+                if (tbPath.IsHandleCreated)
+                    tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+                _excelApp = new Excel.Application();
+                nowWorkbook = _excelApp.Workbooks.Open(_filePath);
+
+                foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
                 {
-                    object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
+                    List<DataTitle> lColum = new List<DataTitle>();
 
-                    if (cellValue != null)
-                    {
+                    int rowCount = worksheet.UsedRange.Rows.Count;
+                    int colCount = worksheet.UsedRange.Columns.Count;
 #if DEBUG
-                        Console.WriteLine("\t" + cellValue.ToString());
+                    Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
 #endif
-                        lColum.Add(new DataTitle() { Index = ii, Title = cellValue.ToString() });
-                    }
-                    else
+                    for (int ii = 1; ii <= colCount; ii++)
                     {
+                        object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
+
+                        if (cellValue != null)
+                        {
 #if DEBUG
-                        Console.WriteLine("\t" + "Empty or null cell");
+                            Console.WriteLine("\t" + cellValue.ToString());
 #endif
+                            lColum.Add(new DataTitle() { Index = ii, Title = cellValue.ToString() });
+                        }
+                        else
+                        {
+#if DEBUG
+                            Console.WriteLine("\t" + "Empty or null cell");
+#endif
+                        }
                     }
+
+                    Sheet sheet = new Sheet() { Name = worksheet.Name, lDataTitle = lColum };
+
+                    ExcelSheets.Add(sheet);
                 }
-
-                Sheet sheet = new Sheet() { Name = worksheet.Name, lDataTitle = lColum };
-
-                ExcelSheets.Add(sheet);
+            }
+            catch(Exception e)
+            {
+                MessageBox.Show(e.Message);
             }
             
             SetAlertDataTable();
@@ -315,7 +322,6 @@ namespace ToastNotification
 
                 if(alert != null)
                 {
-
                     List<DataTitle> AlretList = sheet.lDataTitle.FindAll(x => x.isAlert);
                     List<DataTitle> NotifyList = sheet.lDataTitle.FindAll(x => x.isNotify);
 
