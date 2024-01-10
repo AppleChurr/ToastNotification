@@ -14,6 +14,8 @@ namespace ToastNotification
         /// <param name="disposing">관리되는 리소스를 삭제해야 하면 true이고, 그렇지 않으면 false입니다.</param>
         protected override void Dispose(bool disposing)
         {
+            nowWorkbook.Close();
+
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -37,7 +39,7 @@ namespace ToastNotification
             this.lbIncludeData = new System.Windows.Forms.Label();
             this.lbRef = new System.Windows.Forms.Label();
             this.lbSheets = new System.Windows.Forms.Label();
-            this.lvIncludeData = new System.Windows.Forms.ListView();
+            this.lvNotifyData = new System.Windows.Forms.ListView();
             this.chSelectItem = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.lvRefData = new System.Windows.Forms.ListView();
             this.chDataName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -85,7 +87,7 @@ namespace ToastNotification
             this.pnlMain.Controls.Add(this.lbIncludeData);
             this.pnlMain.Controls.Add(this.lbRef);
             this.pnlMain.Controls.Add(this.lbSheets);
-            this.pnlMain.Controls.Add(this.lvIncludeData);
+            this.pnlMain.Controls.Add(this.lvNotifyData);
             this.pnlMain.Controls.Add(this.lvRefData);
             this.pnlMain.Controls.Add(this.btnSave);
             this.pnlMain.Controls.Add(this.cbSheets);
@@ -138,19 +140,19 @@ namespace ToastNotification
             this.lbSheets.Tag = "";
             this.lbSheets.Text = "시트 선택 :";
             // 
-            // lvIncludeData
+            // lvNotifyData
             // 
-            this.lvIncludeData.CheckBoxes = true;
-            this.lvIncludeData.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.lvNotifyData.CheckBoxes = true;
+            this.lvNotifyData.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.chSelectItem});
-            this.lvIncludeData.HideSelection = false;
-            this.lvIncludeData.Location = new System.Drawing.Point(243, 92);
-            this.lvIncludeData.MultiSelect = false;
-            this.lvIncludeData.Name = "lvIncludeData";
-            this.lvIncludeData.Size = new System.Drawing.Size(218, 350);
-            this.lvIncludeData.TabIndex = 5;
-            this.lvIncludeData.UseCompatibleStateImageBehavior = false;
-            this.lvIncludeData.View = System.Windows.Forms.View.Details;
+            this.lvNotifyData.HideSelection = false;
+            this.lvNotifyData.Location = new System.Drawing.Point(243, 92);
+            this.lvNotifyData.MultiSelect = false;
+            this.lvNotifyData.Name = "lvNotifyData";
+            this.lvNotifyData.Size = new System.Drawing.Size(218, 350);
+            this.lvNotifyData.TabIndex = 5;
+            this.lvNotifyData.UseCompatibleStateImageBehavior = false;
+            this.lvNotifyData.View = System.Windows.Forms.View.Details;
             // 
             // chSelectItem
             // 
@@ -228,7 +230,7 @@ namespace ToastNotification
         private System.Windows.Forms.Label lbSheets;
         private System.Windows.Forms.Label lbIncludeData;
         private System.Windows.Forms.Label lbRef;
-        private System.Windows.Forms.ListView lvIncludeData;
+        private System.Windows.Forms.ListView lvNotifyData;
         private System.Windows.Forms.ColumnHeader chSelectItem;
         private System.Windows.Forms.Label Partition;
     }

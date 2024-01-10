@@ -15,6 +15,7 @@ namespace ToastNotification
 
         #region prevate
         private NotifyIcon _notifyIcon { get; set; }
+        private string _lastMessage { get; set; } = "";
         #endregion
 
         #region public
@@ -57,22 +58,20 @@ namespace ToastNotification
 
         private void _notifyIcon_BalloonTipClosed(object sender, EventArgs e)
         {
-            _notifyIcon.Visible = false;
             MessageClosed?.Invoke(sender, e);
         }
 
         private void _notifyIcon_BalloonTipClicked(object sender, EventArgs e)
         {
-            _notifyIcon.Visible = false;
-            MessageClicked?.Invoke(sender, e);
+            MessageClicked?.Invoke(_lastMessage, e);
         }
 
         public bool ShowMessage(string Title, string Msg)
         {
             try
             {
-                _notifyIcon.Visible = true;
-                _notifyIcon.ShowBalloonTip(Timeout, Title, Msg, ToolTipIcon.Info);
+                _lastMessage = Msg;
+                _notifyIcon.ShowBalloonTip(Timeout, Title, _lastMessage, ToolTipIcon.Info);
             }
             catch
             {

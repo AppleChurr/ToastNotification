@@ -68,7 +68,7 @@ namespace sCommon.Database
             }
         }
 
-        public static void SaveAlert(string SteetName, string Date, string DispInfo)
+        public static void SaveAlert(string SheetName, string Date, string DispInfo)
         {
             using (var connection = new SQLiteConnection(connectionString))
             {
@@ -77,9 +77,24 @@ namespace sCommon.Database
                 {
                     // 이미 키가 존재하는 경우 업데이트, 없는 경우 삽입
                     command.CommandText = $"INSERT OR REPLACE INTO {TableNames[1]} (SheetName, CheckDate, DisplayData) VALUES (@SheetName, @CheckDate, @DisplayData)";
-                    command.Parameters.AddWithValue("@SheetName", SteetName);
+                    command.Parameters.AddWithValue("@SheetName", SheetName);
                     command.Parameters.AddWithValue("@CheckDate", Date);
                     command.Parameters.AddWithValue("@DisplayData", DispInfo);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public static void RemoveAlert(string SheetName)
+        {
+            using (var connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+                using (var command = new SQLiteCommand(connection))
+                {
+                    // 이미 키가 존재하는 경우 업데이트, 없는 경우 삽입
+                    command.CommandText = $"DELETE FROM {TableNames[1]} WHERE SheetName = @SheetName";
+                    command.Parameters.AddWithValue("@SheetName", SheetName);
                     command.ExecuteNonQuery();
                 }
             }

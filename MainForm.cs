@@ -15,18 +15,35 @@ namespace ToastNotification
 {
     public partial class MainForm : Form
     {
+        private string _filePath = "";
+
+        private Excel.Application _excelApp;
+        private Excel.Workbook nowWorkbook;
+
+        private List<Sheet> ExcelSheets = new List<Sheet>();
+        private Sheet NowSheet = new Sheet();
+
+        public event EventHandler ShowAlertMessage;
 
         public MainForm()
         {
             InitializeComponent();
-            cSystemDB.InitializeDatabase();
 
+
+
+        }
+
+        public void Initialize()
+        {
+            cSystemDB.InitializeDatabase();
 
             _filePath = cSystemDB.ReadDataPath();
 
             if (_filePath != null)
             {
+#if DEBUG
                 Console.WriteLine($"Data Path: {_filePath}");
+#endif
                 if (IsExcelFile(_filePath))
                     SetFilePath(_filePath);
                 else
@@ -34,67 +51,11 @@ namespace ToastNotification
             }
 
             MessageBox.Show("프로그램 대기");
+
+            SetNotifyMessage();
         }
 
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            if(this.Visible)
-                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
-
-            base.OnVisibleChanged(e);
-        }
-
-        private string _filePath = "";
-        private Excel.Application _excelApp;
-
-        private List<KeyValuePair<string, List<KeyValuePair<int, string>>>> ExcelSheets = new List<KeyValuePair<string, List<KeyValuePair<int, string>>>>();
-        private KeyValuePair<string, List<KeyValuePair<int, string>>> NowSheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>();
-
-        Excel.Workbook nowWorkbook;
-        Excel.Worksheet nowWorksheet;
-        private void SetFilePath(string value)
-        {
-            _filePath = value;
-
-            if(tbPath.IsHandleCreated)
-                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
-
-            _excelApp = new Excel.Application();
-            nowWorkbook = _excelApp.Workbooks.Open(_filePath);
-
-            foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
-            {
-                List<KeyValuePair<int, string>> lColum = new List<KeyValuePair<int, string>>();
-
-                int rowCount = worksheet.UsedRange.Rows.Count;
-                int colCount = worksheet.UsedRange.Columns.Count;
-
-                Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
-
-                for (int ii = 1; ii <= colCount; ii++)
-                {
-                    object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
-
-                    if (cellValue != null)
-                    {
-                        Console.WriteLine("\t" + cellValue.ToString());
-                        lColum.Add(new KeyValuePair<int, string>(ii, cellValue.ToString()));
-                    }
-                    else
-                    {
-                        Console.WriteLine("\t" + "Empty or null cell");
-                    }
-                }
-
-                KeyValuePair<string, List<KeyValuePair<int, string>>> sheet = new KeyValuePair<string, List<KeyValuePair<int, string>>>(worksheet.Name, lColum);
-
-                ExcelSheets.Add(sheet);
-            }
-
-            SetSheets();
-        }
-
-
+        #region Button Event
         private void btnPath_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
@@ -117,18 +78,113 @@ namespace ToastNotification
                 }
             }
         }
-        private bool IsExcelFile(string filePath)
+        private void btnSave_Click(object sender, EventArgs e)
         {
-            // 파일 확장자가 .xlsx인지 확인
-            return filePath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
-        }
+            string NowSheetName = NowSheet.Name;
+            string Date = "";
+            string Data = "";
+            foreach (int date in lvRefData.CheckedIndices)
+            {
+                if (Date != "") Date += "|" + date.ToString();
+                else            Date += date.ToString();
+            }
 
+            foreach (int data in lvNotifyData.CheckedIndices)
+            {
+                if (Data != "") Data += "|" + data.ToString();
+                else            Data += data.ToString();
+            }
+
+
+            if (Date == "")
+            {
+                cSystemDB.RemoveAlert(NowSheetName);
+                MessageBox.Show("지정된 알람 기준 날짜가 없어 예약을 삭제합니다.", "알림", MessageBoxButtons.OK);
+            }
+            else
+            {
+                cSystemDB.SaveAlert(NowSheetName, Date, Data);
+                DialogResult result = MessageBox.Show("저장이 완료되었습니다.\r\n알람을 바로 적용하시겠습니까?", "알림", MessageBoxButtons.YesNo);
+
+                if (result == DialogResult.Yes)
+                {
+                    SetAlertDataTable();
+                    SetNotifyMessage();
+                    MessageBox.Show("적용되었습니다.", "알림", MessageBoxButtons.OK);
+
+                }
+                else
+                    MessageBox.Show("저장된 알람은 프로그램 재 실행 시 적용됩니다.", "알림", MessageBoxButtons.OK);
+            }
+        }
+        #endregion
+
+        #region ComboBox Event
+        private void cbSheets_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ComboBox cb = (ComboBox)sender;
+
+            if (cb.SelectedIndex >= 0)
+            {
+                NowSheet = ExcelSheets.Find(x => x.Name == (string)cb.SelectedItem);
+                SetTable();
+            }
+        }
+        #endregion
+
+        #region Setting
+        private void SetFilePath(string value)
+        {
+            _filePath = value;
+
+            if (tbPath.IsHandleCreated)
+                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+            _excelApp = new Excel.Application();
+            nowWorkbook = _excelApp.Workbooks.Open(_filePath);
+
+            foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
+            {
+                List<DataTitle> lColum = new List<DataTitle>();
+
+                int rowCount = worksheet.UsedRange.Rows.Count;
+                int colCount = worksheet.UsedRange.Columns.Count;
+#if DEBUG
+                Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
+#endif
+                for (int ii = 1; ii <= colCount; ii++)
+                {
+                    object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
+
+                    if (cellValue != null)
+                    {
+#if DEBUG
+                        Console.WriteLine("\t" + cellValue.ToString());
+#endif
+                        lColum.Add(new DataTitle() { Index = ii, Title = cellValue.ToString() });
+                    }
+                    else
+                    {
+#if DEBUG
+                        Console.WriteLine("\t" + "Empty or null cell");
+#endif
+                    }
+                }
+
+                Sheet sheet = new Sheet() { Name = worksheet.Name, lDataTitle = lColum };
+
+                ExcelSheets.Add(sheet);
+            }
+            
+            SetAlertDataTable();
+            SetSheets();
+        }
         private void SetSheets()
         {
             cbSheets.Items.Clear();
 
-            foreach(var vv in ExcelSheets)
-                cbSheets.Items.Add(vv.Key);
+            foreach(var sheet in ExcelSheets)
+                cbSheets.Items.Add(sheet.Name);
 
             if(cbSheets.Items.Count > 0)
                 cbSheets.SelectedIndex = 0;
@@ -136,128 +192,203 @@ namespace ToastNotification
         private void SetTable()
         {
             lvRefData.Items.Clear();
-            lvIncludeData.Items.Clear();
+            lvNotifyData.Items.Clear();
 
-            List<int> refIndex = new List<int>();
-            List<int> notifyIndex = new List<int>();
-
-            Tuple<string, string, string> alert = cSystemDB.ReadAlert(NowSheet.Key);
-
-            if (alert != null)
+            foreach (var sheet in NowSheet.lDataTitle)
             {
-                string[] strRefIndex = alert.Item2.Split('|');
-                string[] strNotifyIndex = alert.Item3.Split('|');
-                
-                foreach (string numberString in strRefIndex)
+                ListViewItem _ref = new ListViewItem(sheet.Title) { Checked = sheet.isAlert };
+                ListViewItem _noti = new ListViewItem(sheet.Title) { Checked = sheet.isNotify };
+
+                lvRefData.Items.Add(_ref);
+                lvNotifyData.Items.Add(_noti);
+            }
+
+        }
+        private void SetAlertDataTable()
+        {
+            try
+            {
+                foreach (Sheet sheet in ExcelSheets)
                 {
-                    if (int.TryParse(numberString, out int number))
-                        refIndex.Add(number);
-                    else
-                        Console.WriteLine($"Failed to convert '{numberString}' to int.");
-                }
+                    Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
 
-                foreach (string numberString in strNotifyIndex)
-                {
-                    if (int.TryParse(numberString, out int number))
-                        notifyIndex.Add(number);
-                    else
-                        Console.WriteLine($"Failed to convert '{numberString}' to int.");
-                }
-            }
-
-            foreach (var vv in NowSheet.Value)
-            {
-                lvRefData.Items.Add(vv.Value);
-                lvIncludeData.Items.Add(vv.Value);
-            }
-
-            Console.WriteLine("알람 참조 데이터");
-
-            foreach (int ii in refIndex)
-            {
-                lvRefData.Items[ii].Checked = true;
-                Console.WriteLine("\t" + lvRefData.Items[ii].Text);
-            }
-
-            Console.WriteLine("공지 데이터");
-
-            foreach (int ii in notifyIndex)
-            {
-                lvIncludeData.Items[ii].Checked = true;
-                Console.WriteLine("\t" + lvIncludeData.Items[ii].Text);
-            }
-
-
-
-            nowWorksheet = (Worksheet)nowWorkbook.Sheets[NowSheet.Key];
-
-            int rowCount = nowWorksheet.UsedRange.Rows.Count;
-            int colCount = nowWorksheet.UsedRange.Columns.Count;
-
-            Console.WriteLine(nowWorksheet.Name + " >> " + rowCount + ", " + colCount);
-
-            for (int ii = 2; ii <= rowCount; ii++)
-            {
-                foreach (int jj in refIndex)
-                {
-                    object cellValue = (nowWorksheet.Cells[ii, jj + 1] as Excel.Range)?.Value2;
-
-                    if (cellValue != null)
+                    if (alert != null)
                     {
-                        string date = cellValue.ToString();
-                        if (date.Length > 8)
-                            date = "20" + date.Substring(date.Length - 7, 6);
+                        CheckList(sheet, alert.Item2.Split('|'), true);
+                        CheckList(sheet, alert.Item3.Split('|'), false);
 
-                        Console.WriteLine("\t" + date);
+                        Worksheet Worksheet = (Worksheet)nowWorkbook.Sheets[sheet.Name];
+
+                        int rowCount = Worksheet.UsedRange.Rows.Count;
+                        int colCount = Worksheet.UsedRange.Columns.Count;
+#if DEBUG
+                        Console.WriteLine(Worksheet.Name + " >> " + rowCount + ", " + colCount);
+#endif
+
+                        foreach (DataTitle dt in sheet.lDataTitle)
+                            dt.lData.Clear();
+
+                        for (int ii = 2; ii <= rowCount; ii++)
+                        {
+                            foreach (DataTitle dt in sheet.lDataTitle)
+                            {
+                                if (dt.isAlert)
+                                {
+                                    object cellValue = (Worksheet.Cells[ii, dt.Index] as Excel.Range)?.Value2;
+
+                                    if (cellValue != null)
+                                    {
+                                        string date = cellValue.ToString();
+                                        //if (date.Length > 8)
+                                        //    date = "20" + date.Substring(date.Length - 7, 6);
+
+                                        if (date.Length == 5)
+                                        {
+                                            dt.lData.Add(ConvertFromExcelDate(int.Parse(date)));
+#if DEBUG
+                                            Console.WriteLine("\t" + ((DateTime)(dt.lData.Last<object>())).ToString("yyyy-MM-dd"));
+#endif
+                                        }
+                                    }
+                                }
+                                else if (dt.isNotify)
+                                {
+                                    object cellValue = (Worksheet.Cells[ii, dt.Index] as Excel.Range)?.Value2;
+                                    if (cellValue != null)
+                                    {
+                                        string data = cellValue.ToString();
+                                        dt.lData.Add(data);
+#if DEBUG
+                                        Console.WriteLine("\t" + data);
+#endif
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+#if DEBUG
+                Console.WriteLine(e.Message);
+#else
+                MessageBox.Show(e.Message);
+#endif
+            }
+        }
+        #endregion
+
+        private bool IsExcelFile(string filePath)
+        {
+            // 파일 확장자가 .xlsx인지 확인
+            return filePath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
+        }
+        public void CheckList(Sheet sheet, string[] strArray, bool isAlert)
+        {
+            foreach (string numberString in strArray)
+            {
+                if (int.TryParse(numberString, out int number))
+                {
+                    DataTitle dt = sheet.lDataTitle.Find(x => x.Index == number + 1);
+
+                    if (isAlert) dt.isAlert = true;
+                    else dt.isNotify = true;
+                }
+
+                else
+                {
+#if DEBUG
+                    Console.WriteLine($"Failed to convert '{numberString}' to int.");
+#endif
+                }
+            }
+        }
+
+        private void SetNotifyMessage()
+        {
+            string msg = "";
+
+            foreach (Sheet sheet in ExcelSheets)
+            {
+                Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
+
+                if(alert != null)
+                {
+
+                    List<DataTitle> AlretList = sheet.lDataTitle.FindAll(x => x.isAlert);
+                    List<DataTitle> NotifyList = sheet.lDataTitle.FindAll(x => x.isNotify);
+
+                    List<int> lIndex = new List<int>();
+                    foreach(DataTitle dataTitle in AlretList)
+                    {
+                        int nextIdx = 0;
+
+                        while (true)
+                        {
+                            nextIdx = dataTitle.lData.FindIndex(nextIdx, x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))); ;
+
+                            if (nextIdx == -1)
+                                break;
+
+                            lIndex.Add(nextIdx);
+                            nextIdx += 1;
+                        }
+                    }
+
+                    lIndex.Sort();
+
+                    msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
+                    msg += sheet.Name + " 에서 총 " + lIndex.Count + " 개의 확인이 필요합니다. \r\n";
+
+
+                    foreach (int ii in lIndex)
+                    {
+                        foreach(DataTitle data in NotifyList)
+                            msg += data.lData[ii].ToString() + ", ";
+
+                        msg += "\r\n";
                     }
                 }
             }
 
-
+            ShowAlertMessage?.Invoke(msg, new EventArgs());
         }
 
-        private void cbSheets_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ComboBox cb = (ComboBox)sender;
-            
-            if(cb.SelectedIndex >= 0)
-            {
-                NowSheet = ExcelSheets.Find(x => x.Key == (string)cb.SelectedItem);
 
-                SetTable();
-            }
+#region override
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            if (this.Visible)
+                tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
+
+            base.OnVisibleChanged(e);
         }
-        private void btnSave_Click(object sender, EventArgs e)
+        #endregion
+
+        static DateTime ConvertFromExcelDate(double excelDate)
         {
-            /// 해당 파일 패스 DB에 저장
-            /// 프로그램 실행 시 자동으로 읽어오도록
-            /// 파일 읽기
-            /// 다음 저장된 시트 번호 / 항목 명 / 날짜 형식 확인
-            /// 해당 파일을 읽고 해당 항목에 해당하는 
+            // Excel의 날짜 기준인 "1900년 1월 1일"을 기준으로 경과된 일 수를 더합니다.
+            DateTime baseDate = new DateTime(1900, 1, 1);
+            DateTime resultDate = baseDate.AddDays(excelDate - 2); // Excel의 날짜 기준으로 2일이 차이나므로 2를 빼줍니다.
 
-            string NowSheetName = NowSheet.Key;
-            string Date = "";
-            string Data = "";
-            foreach(int date in lvRefData.CheckedIndices)
-            {
-                if (Date != "")
-                    Date += "|" + date.ToString();
-                else
-                    Date += date.ToString();
-            }
-
-            foreach (int data in lvIncludeData.CheckedIndices)
-            {
-                if(Data != "")
-                    Data += "|" + data.ToString();
-                else
-                    Data += data.ToString();
-            }
-            cSystemDB.SaveAlert(NowSheetName, Date, Data);
-
-
-            MessageBox.Show("저장이 완료되었습니다.");
-
+            return resultDate;
         }
     }
+
+    public class Sheet
+    {
+        public string Name { get; set; } = "sheets";
+        public List<DataTitle> lDataTitle { get; set; } = new List<DataTitle>();
+    }
+
+    public class DataTitle
+    {
+        public int Index { get; set; } = -1;
+        public string Title { get; set; } = "";
+        public bool isAlert { get; set; } = false;
+        public bool isNotify { get; set; } = false;
+        public List<object> lData { get; set; } = new List<object>();
+    }
+
 }
