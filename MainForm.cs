@@ -1,15 +1,9 @@
-﻿using Microsoft.Office.Interop.Excel;
+﻿using ClosedXML.Excel;
 using sCommon.Database;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ToastNotification
 {
@@ -17,11 +11,11 @@ namespace ToastNotification
     {
         private string _filePath = "";
 
-        private Excel.Application _excelApp;
-        private Excel.Workbook nowWorkbook;
+        private XLWorkbook _excelWorkbook;
 
         private List<Sheet> ExcelSheets = new List<Sheet>();
         private Sheet NowSheet = new Sheet();
+
 
         public event EventHandler ShowAlertMessage;
 
@@ -142,23 +136,22 @@ namespace ToastNotification
                 if (tbPath.IsHandleCreated)
                     tbPath.Invoke(new MethodInvoker(delegate { tbPath.Text = _filePath; }));
 
-                _excelApp = new Excel.Application();
-                nowWorkbook = _excelApp.Workbooks.Open(_filePath);
+                _excelWorkbook = new XLWorkbook(_filePath);
 
-                foreach (Excel.Worksheet worksheet in nowWorkbook.Sheets.Cast<Excel.Worksheet>())
+                foreach (IXLWorksheet worksheet in _excelWorkbook.Worksheets)
                 {
                     List<DataTitle> lColum = new List<DataTitle>();
 
-                    int rowCount = worksheet.UsedRange.Rows.Count;
-                    int colCount = worksheet.UsedRange.Columns.Count;
+                    int rowCount = worksheet.RowsUsed().Count();
+                    int colCount = worksheet.ColumnsUsed().Count();
 #if DEBUG
                     Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
 #endif
                     for (int ii = 1; ii <= colCount; ii++)
                     {
-                        object cellValue = (worksheet.Cells[1, ii] as Excel.Range)?.Value2;
+                        var cellValue = worksheet.Cell(1, ii).Value;
 
-                        if (cellValue != null)
+                        if (!cellValue.IsBlank)
                         {
 #if DEBUG
                             Console.WriteLine("\t" + cellValue.ToString());
@@ -178,14 +171,15 @@ namespace ToastNotification
                     ExcelSheets.Add(sheet);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 MessageBox.Show(e.Message);
             }
-            
+
             SetAlertDataTable();
             SetSheets();
         }
+
         private void SetSheets()
         {
             cbSheets.Items.Clear();
@@ -224,53 +218,117 @@ namespace ToastNotification
                         CheckList(sheet, alert.Item2.Split('|'), true);
                         CheckList(sheet, alert.Item3.Split('|'), false);
 
-                        Worksheet Worksheet = (Worksheet)nowWorkbook.Sheets[sheet.Name];
+                        var worksheet = _excelWorkbook.Worksheet(sheet.Name);
 
-                        int rowCount = Worksheet.UsedRange.Rows.Count;
-                        int colCount = Worksheet.UsedRange.Columns.Count;
+                        int rowCount = worksheet.RowsUsed().Count();
+                        int colCount = worksheet.ColumnsUsed().Count();
 #if DEBUG
-                        Console.WriteLine(Worksheet.Name + " >> " + rowCount + ", " + colCount);
+                        Console.WriteLine(worksheet.Name + " >> " + rowCount + ", " + colCount);
 #endif
 
-                        foreach (DataTitle dt in sheet.lDataTitle)
-                            dt.lData.Clear();
+
+                        foreach (DataLine line in sheet.lLines)
+                        {
+                            line.lAlert.Clear();
+                            line.lData.Clear();
+                        }
+                        sheet.lLines.Clear();
+
+
+
+
+
+
 
                         for (int ii = 2; ii <= rowCount; ii++)
                         {
+                            DataLine line = new DataLine();
+
                             foreach (DataTitle dt in sheet.lDataTitle)
                             {
                                 if (dt.isAlert)
                                 {
-                                    object cellValue = (Worksheet.Cells[ii, dt.Index] as Excel.Range)?.Value2;
-
-                                    if (cellValue != null)
+                                    try
                                     {
-                                        string date = cellValue.ToString();
-                                        //if (date.Length > 8)
-                                        //    date = "20" + date.Substring(date.Length - 7, 6);
-
-                                        if (date.Length == 5)
+                                        var cell = worksheet.Cell(ii, dt.Index);
+                                        if((cell.DataType == XLDataType.Text) && ((string)cell.CachedValue == ""))
                                         {
-                                            dt.lData.Add(ConvertFromExcelDate(int.Parse(date)));
-#if DEBUG
-                                            Console.WriteLine("\t" + ((DateTime)(dt.lData.Last<object>())).ToString("yyyy-MM-dd"));
-#endif
+                                            //dt.lData.Add(new DateTime());
+                                            line.lAlert.Add(new DateTime());
                                         }
+                                        else
+                                        {
+                                            var cellValue = worksheet.Cell(ii, dt.Index).Value;
+
+                                            if (!cellValue.IsBlank)
+                                            {
+                                                DateTime datetime = new DateTime();
+
+                                                if (cellValue.IsDateTime)
+                                                    datetime = cellValue.GetDateTime();
+                                                else if (cellValue.IsNumber)
+                                                    datetime = ConvertFromExcelDate(cellValue.GetNumber());
+
+                                                //dt.lData.Add(datetime);
+                                                line.lAlert.Add(datetime);
+
+#if DEBUG
+                                                Console.WriteLine("\t" + datetime.ToString("yyyy-MM-dd"));
+#endif
+                                            }
+                                        }
+                                       
+                                    }
+                                    catch (Exception ex)
+                                    {
+#if DEBUG
+                                        Console.WriteLine(ex.Message);
+#else
+                MessageBox.Show(ex.Message);
+#endif
+                                        //dt.lData.Add(new DateTime());
+                                        line.lAlert.Add(new DateTime());
                                     }
                                 }
                                 else if (dt.isNotify)
                                 {
-                                    object cellValue = (Worksheet.Cells[ii, dt.Index] as Excel.Range)?.Value2;
-                                    if (cellValue != null)
+                                    try
                                     {
-                                        string data = cellValue.ToString();
-                                        dt.lData.Add(data);
+                                        var cellValue = worksheet.Cell(ii, dt.Index).Value;
+                                        if (!cellValue.IsBlank)
+                                        {
+                                            if (cellValue.IsText)
+                                            {
+                                                string data = cellValue.ToString();
+                                                //dt.lData.Add(data);
+                                                line.lData.Add(data);
+
 #if DEBUG
-                                        Console.WriteLine("\t" + data);
+                                                Console.WriteLine("\t" + data);
 #endif
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //dt.lData.Add("");
+                                            line.lData.Add("");
+                                        }
+
+                                    }
+                                    catch (Exception ex)
+                                    {
+#if DEBUG
+                                        Console.WriteLine(ex.Message);
+#else
+                MessageBox.Show(ex.Message);
+#endif
+                                        //dt.lData.Add("");
+                                        line.lData.Add("");
                                     }
                                 }
                             }
+
+                            sheet.lLines.Add(line);
                         }
                     }
                 }
@@ -299,8 +357,21 @@ namespace ToastNotification
                 {
                     DataTitle dt = sheet.lDataTitle.Find(x => x.Index == number + 1);
 
-                    if (isAlert) dt.isAlert = true;
-                    else dt.isNotify = true;
+                    if (isAlert)
+                    {
+                        dt.isAlert = true;
+#if DEBUG
+                        Console.WriteLine(dt.Title + " is Alert");
+#endif
+                    }
+                    else
+                    {
+                        dt.isNotify = true;
+
+#if DEBUG
+                        Console.WriteLine(dt.Title + " is Notify");
+#endif
+                    }
                 }
 
                 else
@@ -320,47 +391,31 @@ namespace ToastNotification
             {
                 Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
 
-                if(alert != null)
+                if (alert != null)
                 {
-                    List<DataTitle> AlretList = sheet.lDataTitle.FindAll(x => x.isAlert);
-                    List<DataTitle> NotifyList = sheet.lDataTitle.FindAll(x => x.isNotify);
+                    msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
+                    int CountAlert = 0;
 
-                    List<int> lIndex = new List<int>();
-                    foreach(DataTitle dataTitle in AlretList)
+                    foreach (DataLine line in sheet.lLines)
                     {
-                        int nextIdx = 0;
-
-                        while (true)
+                        if(line.lAlert.FindIndex(x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))) >= 0)
                         {
-                            nextIdx = dataTitle.lData.FindIndex(nextIdx, x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))); ;
+                            foreach (string data in line.lData)
+                                msg += (data + ", ");
 
-                            if (nextIdx == -1)
-                                break;
+                            msg += "\r\n";
 
-                            lIndex.Add(nextIdx);
-                            nextIdx += 1;
+                            CountAlert += 1;
                         }
                     }
 
-                    lIndex.Sort();
+                    msg += sheet.Name + " 에서 총 " + CountAlert + " 개의 확인이 필요합니다. \r\n";
 
-                    msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
-                    msg += sheet.Name + " 에서 총 " + lIndex.Count + " 개의 확인이 필요합니다. \r\n";
-
-
-                    foreach (int ii in lIndex)
-                    {
-                        foreach(DataTitle data in NotifyList)
-                            msg += data.lData[ii].ToString() + ", ";
-
-                        msg += "\r\n";
-                    }
                 }
             }
 
             ShowAlertMessage?.Invoke(msg, new EventArgs());
         }
-
 
 #region override
         protected override void OnVisibleChanged(EventArgs e)
@@ -370,7 +425,7 @@ namespace ToastNotification
 
             base.OnVisibleChanged(e);
         }
-        #endregion
+#endregion
 
         static DateTime ConvertFromExcelDate(double excelDate)
         {
@@ -386,6 +441,7 @@ namespace ToastNotification
     {
         public string Name { get; set; } = "sheets";
         public List<DataTitle> lDataTitle { get; set; } = new List<DataTitle>();
+        public List<DataLine> lLines { get; set; } = new List<DataLine>();
     }
 
     public class DataTitle
@@ -394,7 +450,12 @@ namespace ToastNotification
         public string Title { get; set; } = "";
         public bool isAlert { get; set; } = false;
         public bool isNotify { get; set; } = false;
-        public List<object> lData { get; set; } = new List<object>();
+    }
+
+    public class DataLine
+    {
+        public List<DateTime> lAlert { get; set; } = new List<DateTime>();
+        public List<string> lData { get; set; } = new List<string>();
     }
 
 }
