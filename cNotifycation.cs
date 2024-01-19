@@ -71,7 +71,7 @@ namespace ToastNotification
             try
             {
                 _lastMessage = Msg;
-                _notifyIcon.ShowBalloonTip(Timeout, Title, _lastMessage, ToolTipIcon.Info);
+                _notifyIcon.ShowBalloonTip(Timeout, Title, _lastMessage.Split('&')[0], ToolTipIcon.Info);
             }
             catch
             {

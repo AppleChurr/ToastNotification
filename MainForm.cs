@@ -115,7 +115,7 @@ namespace ToastNotification
                     if (result == DialogResult.Yes)
                     {
                         SetAlertDataTable();
-                        SetNotifyMessage();
+                        //SetNotifyMessage();
                         MessageBox.Show("적용되었습니다.", "알림", MessageBoxButtons.OK);
 
                     }
@@ -433,30 +433,51 @@ namespace ToastNotification
             {
                 string msg = "";
 
+                List<List<string>> _lines = new List<List<string>>();
+
                 foreach (Sheet sheet in ExcelSheets)
                 {
                     Tuple<string, string, string> alert = cSystemDB.ReadAlert(sheet.Name);
 
                     if (alert != null)
                     {
-                        msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
                         int CountAlert = 0;
+                        msg += "오늘은 " + DateTime.Today.ToString("yyyy-MM-dd") + "입니다.\r\n";
 
                         foreach (DataLine line in sheet.lLines)
                         {
                             if (line.lAlert.FindIndex(x => ((DateTime)x).Equals(DateTime.Today.AddDays(21))) >= 0)
                             {
-                                foreach (string data in line.lData)
-                                    msg += (data + ", ");
+                                List<string> _line = new List<string>();
 
-                                msg += "\r\n";
+
+                                foreach (string data in line.lData)
+                                    _line.Add(data);
+                                    //msg += (data + ", ");
+
+                                //msg += "\r\n";
 
                                 CountAlert += 1;
+
+                                _line.Add("$");
+
+                                _lines.Add(_line);
                             }
                         }
 
                         msg += sheet.Name + " 에서 총 " + CountAlert + " 개의 확인이 필요합니다. \r\n";
+                        msg += "&";
+                    }
+                }
 
+                foreach(List<string> _line in _lines)
+                {
+                    foreach(string _data in _line)
+                    {
+                        if(_data == "$")
+                            msg += _data;
+                        else
+                            msg += _data + "|";
                     }
                 }
 

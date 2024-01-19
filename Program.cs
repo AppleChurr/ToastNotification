@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Drawing;
 using Windows.UI.Notifications;
 using System.Threading;
+using ClosedXML.Excel;
 
 namespace ToastNotification
 {
@@ -65,11 +66,47 @@ namespace ToastNotification
         private static void Notifycation_MessageClicked(object sender, EventArgs e)
         {
             string msg = (string)sender;
-            DialogResult result = MessageBox.Show(msg + "확인을 누르시면 클립보드로 복사됩니다.");
-            if(result == DialogResult.OK)
-                Clipboard.SetText(msg);
+            DialogResult result = MessageBox.Show("확인을 누르시면 새로운 파일로 저장됩니다.");
+            if (result == DialogResult.OK)
+            {
+                string[] _savedata = msg.Split('&')[1].Split('$');
 
+                ExportStringArrayToExcel(_savedata);
+                //Clipboard.SetText(msg);
+            }
             Notifycation.MessageClicked -= Notifycation_MessageClicked;
+        }
+
+        public static void ExportStringArrayToExcel(string[] lines)
+        {
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("Sheet1");
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string[] line = lines[i].Split('|');
+
+                    for (int j = 0; j < line.Length; j++)
+                        worksheet.Cell(i + 1, j+1).Value = line[j];
+                }
+
+                SaveExcelFile(workbook);
+            }
+        }
+
+        private static void SaveExcelFile(XLWorkbook workbook)
+        {
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Excel files (*.xlsx)|*.xlsx";
+                saveFileDialog.Title = "Save an Excel File";
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    workbook.SaveAs(saveFileDialog.FileName);
+                    MessageBox.Show("파일이 저장되었습니다.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
         }
 
         private static void MainForm_FormClosing(object sender, FormClosingEventArgs e)

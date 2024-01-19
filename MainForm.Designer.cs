@@ -33,6 +33,7 @@ namespace ToastNotification
             this.tbPath = new System.Windows.Forms.TextBox();
             this.pnlFilePath = new System.Windows.Forms.Panel();
             this.pnlMain = new System.Windows.Forms.Panel();
+            this.btnClose = new System.Windows.Forms.Button();
             this.Partition = new System.Windows.Forms.Label();
             this.lbIncludeData = new System.Windows.Forms.Label();
             this.lbRef = new System.Windows.Forms.Label();
@@ -43,7 +44,6 @@ namespace ToastNotification
             this.chDataName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.btnSave = new System.Windows.Forms.Button();
             this.cbSheets = new System.Windows.Forms.ComboBox();
-            this.btnClose = new System.Windows.Forms.Button();
             this.pnlFilePath.SuspendLayout();
             this.pnlMain.SuspendLayout();
             this.SuspendLayout();
@@ -97,6 +97,16 @@ namespace ToastNotification
             this.pnlMain.Name = "pnlMain";
             this.pnlMain.Size = new System.Drawing.Size(473, 477);
             this.pnlMain.TabIndex = 3;
+            // 
+            // btnClose
+            // 
+            this.btnClose.Location = new System.Drawing.Point(386, 448);
+            this.btnClose.Name = "btnClose";
+            this.btnClose.Size = new System.Drawing.Size(75, 23);
+            this.btnClose.TabIndex = 11;
+            this.btnClose.Text = "닫기";
+            this.btnClose.UseVisualStyleBackColor = true;
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // Partition
             // 
@@ -198,16 +208,6 @@ namespace ToastNotification
             this.cbSheets.Size = new System.Drawing.Size(283, 20);
             this.cbSheets.TabIndex = 3;
             this.cbSheets.SelectedIndexChanged += new System.EventHandler(this.cbSheets_SelectedIndexChanged);
-            // 
-            // btnClose
-            // 
-            this.btnClose.Location = new System.Drawing.Point(386, 448);
-            this.btnClose.Name = "btnClose";
-            this.btnClose.Size = new System.Drawing.Size(75, 23);
-            this.btnClose.TabIndex = 11;
-            this.btnClose.Text = "닫기";
-            this.btnClose.UseVisualStyleBackColor = true;
-            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // MainForm
             // 
